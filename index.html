@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>Gladiátor Alapjáték</title>
+    <style>
+        body { background: #181a20; color: #eee; font-family: Arial, sans-serif; }
+        .main-layout { display: flex; }
+        .side-menu { width: 120px; background: #23232e; min-height: 100vh; display: flex; flex-direction: column; align-items: stretch; padding-top: 40px; box-shadow: 2px 0 12px #0004; }
+        .side-menu-btn { background: none; border: none; color: #ffd700; font-size: 1.1em; font-weight: bold; padding: 16px 0; cursor: pointer; transition: background 0.2s; }
+        .side-menu-btn.active, .side-menu-btn:hover { background: #393e6c; color: #fff; }
+        .main-content { flex: 1; }
+        .market-container { display: flex; justify-content: center; align-items: flex-start; gap: 48px; margin-top: 40px; }
+        .market-panel { background: #23232e; border-radius: 10px; padding: 24px 18px; min-width: 320px; min-height: 340px; display: flex; flex-direction: column; align-items: center; position: relative; }
+        .market-title { font-size: 1.2em; color: #ffd700; margin-bottom: 12px; }
+        .market-cats { display: flex; gap: 12px; margin-bottom: 18px; }
+        .market-cat-btn { background: #393e6c; color: #ffd700; border: none; border-radius: 7px; padding: 7px 18px; font-size: 1em; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .market-cat-btn.active, .market-cat-btn:hover { background: #ffd700; color: #23232e; }
+        .market-goods { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; margin-bottom: 18px; }
+        .market-item { background: #393e6c; border-radius: 8px; padding: 14px 12px 10px 12px; min-width: 90px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: 0 2px 8px #0004; }
+        .market-item-icon { font-size: 2em; margin-bottom: 4px; }
+        .market-item-name { color: #ffd700; font-size: 1.05em; margin-bottom: 2px; text-align: center; }
+        .market-item-price { color: #eebbc3; font-size: 0.98em; margin-bottom: 6px; }
+        .market-item-btn { background: #ffd700; color: #23232e; border: none; border-radius: 7px; padding: 5px 16px; font-size: 0.98em; font-weight: bold; cursor: pointer; margin-top: 4px; transition: background 0.2s; }
+        .market-item-btn:hover { background: #eebbc3; color: #23232e; }
+        .market-item-tooltip { display: none; position: absolute; left: 110%; top: 0; background: #232946; color: #ffd700; border: 1px solid #b8c1ec; border-radius: 8px; padding: 10px 14px; font-size: 0.98em; z-index: 100; min-width: 140px; white-space: pre-line; box-shadow: 0 2px 12px #0008; }
+        .market-item:hover .market-item-tooltip { display: block; }
+        .market-refresh-bar-bg { width: 100%; height: 12px; background: #393e6c; border-radius: 6px; margin: 8px 0 0 0; position: relative; }
+        .market-refresh-bar { height: 100%; background: #ffd700; border-radius: 6px; transition: width 0.2s; width: 0; }
+        .market-refresh-row { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+        .market-refresh-timer { color: #ffd700; font-size: 1em; font-weight: bold; }
+        .market-refresh-btn { background: #ffd700; color: #23232e; border: none; border-radius: 7px; padding: 5px 16px; font-size: 0.98em; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .market-refresh-btn:hover { background: #eebbc3; color: #23232e; }
+        .market-error { color: #ff4d4d; font-size: 1em; text-align: center; margin-top: 8px; min-height: 22px; }
+        .container { display: flex; justify-content: center; align-items: flex-start; gap: 48px; margin-top: 40px; }
+        .equipment-panel, .inventory-panel, .stats-panel, .combat-panel { background: #23232e; border-radius: 10px; padding: 24px 18px; }
+        .equipment-panel, .stats-panel, .combat-panel { min-width: 120px; display: flex; flex-direction: column; align-items: center; }
+        .equip-title, .inventory-title, .stats-title, .combat-title { font-size: 1.1em; color: #ffd700; margin-bottom: 12px; }
+        .equipment { display: flex; flex-direction: column; gap: 18px; }
+        .equip-slot { width: 68px; height: 68px; background: #393e6c; border: 2.5px solid #b8c1ec; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.7em; cursor: pointer; position: relative; transition: border 0.2s, background 0.2s, box-shadow 0.2s; margin-bottom: 2px; box-shadow: 0 2px 8px #0004; }
+        .equip-slot.has-item { border: 2.5px solid #ffd700; background: #232946; box-shadow: 0 0 12px #ffd70055; }
+        .equip-slot.dragover { border: 2.5px solid #ffd700; background: #393e6c; box-shadow: 0 0 16px #ffd70099; }
+        .equip-label { color: #6c7ba5; font-size: 0.6em; text-align: center; position: absolute; left: 50%; bottom: 1px; transform: translateX(-50%); font-weight: normal; pointer-events: none; background: none; max-width: 100%; white-space: nowrap; overflow: visible; text-overflow: unset; }
+        .equip-slot .slot-icon { color: #b8c1ec; opacity: 0.35; }
+        .equip-slot.has-item .slot-icon { color: inherit; opacity: 1; }
+        .equip-tooltip { display: none; position: absolute; left: 110%; top: 0; background: #232946; color: #ffd700; border: 1px solid #b8c1ec; border-radius: 8px; padding: 12px 16px; font-size: 1.08em; z-index: 100; min-width: 160px; white-space: pre-line; box-shadow: 0 2px 12px #0008; }
+        .equip-slot:hover .equip-tooltip { display: block; }
+        .inventory-panel { position: relative; }
+        .inventory-title { font-size: 1.1em; color: #ffd700; margin-bottom: 12px; text-align: center; }
+        .inventory-grid { display: grid; grid-template-columns: repeat(8, 44px); grid-template-rows: repeat(4, 44px); gap: 8px; }
+        .inv-slot { width: 44px; height: 44px; background: #b8c1ec; border: 2px solid #eebbc3; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 1.3em; cursor: pointer; position: relative; transition: border 0.2s, background 0.2s; }
+        .inv-slot.dragover { border: 2px solid #ffd700; background: #232946; }
+        .inv-tooltip { display: none; position: absolute; left: 110%; top: 0; background: #232946; color: #ffd700; border: 1px solid #b8c1ec; border-radius: 6px; padding: 8px 12px; font-size: 0.95em; z-index: 100; min-width: 120px; white-space: pre-line; }
+        .inv-slot:hover .inv-tooltip { display: block; }
+        .stats-panel { min-width: 180px; position: relative; }
+        .gold-bar { color: #ffd700; font-size: 1.15em; font-weight: bold; margin-bottom: 8px; letter-spacing: 0.5px; text-shadow: 0 1px 4px #000a; display: flex; align-items: center; gap: 8px; }
+        .shop-btn { background: #ffd700; color: #23232e; border: none; border-radius: 7px; padding: 7px 18px; font-size: 1em; font-weight: bold; cursor: pointer; margin-bottom: 10px; margin-left: 8px; transition: background 0.2s; }
+        .shop-btn:hover { background: #eebbc3; color: #23232e; }
+        .char-avatar-big { width: 80px; height: 80px; border-radius: 50%; background: #393e6c; display: flex; align-items: center; justify-content: center; font-size: 3em; border: 3px solid #ffd700; margin: 0 auto 12px auto; position: relative; }
+        .heal-float { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); color: #00ff7f; font-weight: bold; font-size: 1.2em; pointer-events: none; opacity: 0; transition: opacity 0.2s, top 0.7s; z-index: 10; }
+        .heal-float.show { opacity: 1; top: -30px; }
+        .stats-list { list-style: none; padding: 0; margin: 0; width: 100%; }
+        .stats-list li { margin-bottom: 8px; font-size: 1.05em; }
+        .combat-panel { min-width: 220px; }
+        .enemy-img { width: 64px; height: 64px; border-radius: 8px; background: #393e6c; display: flex; align-items: center; justify-content: center; font-size: 2.2em; margin-bottom: 8px; }
+        .progress-bar-bg { background: #393e6c; border-radius: 6px; width: 100%; height: 16px; margin-bottom: 6px; }
+        .progress-bar { background: #ffd700; height: 100%; border-radius: 6px; transition: width 0.3s; }
+        .char-select-bg { background: #23232e; border-radius: 12px; padding: 32px 32px 24px 32px; max-width: 340px; margin: 60px auto 0 auto; box-shadow: 0 0 16px #0008; }
+        .char-select-title { color: #ffd700; font-size: 1.3em; margin-bottom: 18px; text-align: center; }
+        .char-select-row { display: flex; gap: 24px; justify-content: center; margin-bottom: 18px; }
+        .char-avatar { width: 64px; height: 64px; border-radius: 50%; background: #393e6c; display: flex; align-items: center; justify-content: center; font-size: 2.2em; border: 3px solid #b8c1ec; cursor: pointer; transition: border 0.2s; }
+        .char-avatar.selected { border: 3px solid #ffd700; }
+        .char-name-input { width: 80%; padding: 7px 10px; border-radius: 6px; border: 1px solid #b8c1ec; background: #181a20; color: #ffd700; font-size: 1.1em; margin-bottom: 18px; display: block; margin-left: auto; margin-right: auto; }
+        .char-select-btn { background: #ffd700; color: #23232e; border: none; border-radius: 7px; padding: 10px 28px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: background 0.2s; display: block; margin: 0 auto; }
+        .char-select-btn:hover { background: #eebbc3; color: #23232e; }
+        .combat-btn { background: #ffd700; color: #23232e; border: none; border-radius: 7px; padding: 8px 22px; font-size: 1em; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
+        .combat-btn:hover { background: #eebbc3; color: #23232e; }
+        .combat-log { background: #181a20; color: #ffd700; border-radius: 6px; padding: 8px 10px; font-size: 0.98em; min-height: 40px; margin-top: 18px; max-width: 200px; max-height: 180px; overflow-y: auto; display: flex; flex-direction: column-reverse; }
+        .combat-log .dmg { color: #ff4d4d; font-weight: bold; }
+        .combat-log .dmg-taken { color: #ff4d4d; font-weight: bold; }
+        .combat-log .heal { color: #00ff7f; font-weight: bold; }
+        .combat-log .loot { color: #ffd700; font-weight: bold; }
+        .combat-log .loot-val { color: #00ff7f; font-weight: bold; }
+        .combat-log .gold { color: #ffd700; font-weight: bold; }
+        .combat-log .gold-val { color: #00ff7f; font-weight: bold; }
+        .combat-log .name { color: #fff; font-weight: bold; }
+        .combat-log .action { color: #ffd700; font-weight: bold; }
+        .combat-cooldown-bar-bg { width: 100%; height: 10px; background: #393e6c; border-radius: 6px; margin: 8px 0 0 0; position: relative; }
+        .combat-cooldown-bar { height: 100%; background: #ffd700; border-radius: 6px; transition: width 0.2s; width: 0; }
+        .shop-modal-bg { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; background: #181a20cc; z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .shop-modal { background: #23232e; border-radius: 14px; padding: 32px 32px 24px 32px; min-width: 340px; min-height: 320px; box-shadow: 0 0 32px #000a; position: relative; }
+        .shop-title { color: #ffd700; font-size: 1.25em; margin-bottom: 18px; text-align: center; letter-spacing: 0.5px; }
+        .shop-items { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; margin-bottom: 18px; }
+        .shop-item { background: #393e6c; border-radius: 8px; padding: 14px 12px 10px 12px; min-width: 90px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: 0 2px 8px #0004; }
+        .shop-item-icon { font-size: 2em; margin-bottom: 4px; }
+        .shop-item-name { color: #ffd700; font-size: 1.05em; margin-bottom: 2px; text-align: center; }
+        .shop-item-price { color: #eebbc3; font-size: 0.98em; margin-bottom: 6px; }
+        .shop-item-btn { background: #ffd700; color: #23232e; border: none; border-radius: 7px; padding: 5px 16px; font-size: 0.98em; font-weight: bold; cursor: pointer; margin-top: 4px; transition: background 0.2s; }
+        .shop-item-btn:hover { background: #eebbc3; color: #23232e; }
+        .shop-item-tooltip { display: none; position: absolute; left: 110%; top: 0; background: #232946; color: #ffd700; border: 1px solid #b8c1ec; border-radius: 8px; padding: 10px 14px; font-size: 0.98em; z-index: 100; min-width: 140px; white-space: pre-line; box-shadow: 0 2px 12px #0008; }
+        .shop-item:hover .shop-item-tooltip { display: block; }
+        .shop-close-btn { position: absolute; right: 18px; top: 14px; background: none; border: none; color: #ffd700; font-size: 1.5em; cursor: pointer; }
+        .shop-error { color: #ff4d4d; font-size: 1em; text-align: center; margin-top: 8px; min-height: 22px; }
+        .market-float { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); font-weight: bold; font-size: 1.3em; pointer-events: none; opacity: 0; transition: opacity 0.2s, top 0.7s; z-index: 10; text-shadow: 0 2px 8px #000a; }
+        .market-float.minus { color: #ff4d4d; }
+        .market-float.plus { color: #00ff7f; }
+        .market-gold-bar { color: #ffd700; font-size: 1.1em; font-weight: bold; margin-bottom: 8px; letter-spacing: 0.5px; text-shadow: 0 1px 4px #000a; display: flex; align-items: center; gap: 8px; justify-content: center; }
+        .market-storage-panel { background: #23232e; border-radius: 10px; padding: 18px 12px; min-width: 180px; display: flex; flex-direction: column; align-items: center; margin-bottom: 18px; }
+        .market-storage-title { color: #ffd700; font-size: 1em; margin-bottom: 8px; }
+        .market-storage-grid { display: grid; grid-template-columns: repeat(8, 36px); grid-template-rows: repeat(8, 36px); gap: 6px; }
+        .market-slot { width: 36px; height: 36px; background: #b8c1ec; border: 2px solid #eebbc3; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 1.1em; cursor: pointer; position: relative; transition: border 0.2s, background 0.2s; }
+        .market-slot.dragover { border: 2px solid #ffd700; background: #232946; }
+        .market-slot .inv-tooltip { left: 110%; top: 0; }
+    </style>
+</head>
+<body>
+    <div class="main-layout">
+        <div class="side-menu">
+            <button class="side-menu-btn active" id="menuGameBtn">Játék</button>
+            <button class="side-menu-btn" id="menuMarketBtn">Piac</button>
+        </div>
+        <div class="main-content">
+            <div id="gameUI">
+                <h2 style="text-align:center">Gladiátor Alapjáték</h2>
+                <div id="charSelect" class="char-select-bg">
+                    <div class="char-select-title">Karakter létrehozása</div>
+                    <div class="char-select-row">
+                        <div class="char-avatar" id="avatarMale" data-gender="male" title="Férfi">🧔</div>
+                        <div class="char-avatar" id="avatarFemale" data-gender="female" title="Nő">👩‍🦰</div>
+                    </div>
+                    <input type="text" id="charName" class="char-name-input" maxlength="16" placeholder="Név...">
+                    <button class="char-select-btn" id="startGameBtn">Kezdés</button>
+                </div>
+                <div class="container">
+                    <div class="stats-panel">
+                        <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                            <div class="gold-bar" id="goldBar">💰 Arany: 100</div>
+                            <button class="shop-btn" id="shopBtn">Bolt</button>
+                        </div>
+                        <div class="char-avatar-big" id="charAvatarBig"><span id="charAvatarBigEmoji">🧔</span>
+                            <span class="heal-float" id="healFloat">+10</span>
+                        </div>
+                        <div class="stats-title">Statok</div>
+                        <ul class="stats-list" id="statsList"></ul>
+                    </div>
+                    <div class="equipment-panel">
+                        <div class="equip-title">Felszerelés</div>
+                        <div class="equipment" id="equipmentPanel"></div>
+                    </div>
+                    <div class="inventory-panel">
+                        <div class="inventory-title">Leltár</div>
+                        <div class="inventory-grid" id="inventoryGrid"></div>
+                    </div>
+                    <div class="combat-panel">
+                        <div class="combat-title">Harc</div>
+                        <div class="enemy-img" id="enemyImg">🦹‍♂️</div>
+                        <div style="width:100%">
+                            <div class="progress-bar-bg"><div class="progress-bar" id="enemyHpBar"></div></div>
+                        </div>
+                        <div id="enemyName" style="color:#ffd700; font-size:1.05em; margin-bottom:4px;">Ellenség</div>
+                        <div id="enemyStats" style="font-size:0.98em; color:#b8c1ec; margin-bottom:8px;"></div>
+                        <button class="combat-btn" id="attackBtn">Támadás</button>
+                        <div class="combat-cooldown-bar-bg"><div class="combat-cooldown-bar" id="combatCooldownBar"></div></div>
+                        <div class="combat-log" id="combatLog"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="marketUI" style="display:none;">
+                <div class="market-title">Piac</div>
+                <div class="market-gold-bar" id="marketGoldBar">💰 Arany: 100</div>
+                <div class="market-cats" id="marketCats"></div>
+                <div class="market-refresh-row">
+                    <span class="market-refresh-timer" id="marketRefreshTimer">Új áru érkezik: 5:00</span>
+                    <button class="market-refresh-btn" id="marketRefreshBtn">Frissítés (50💰)</button>
+                </div>
+                <div class="market-refresh-bar-bg"><div class="market-refresh-bar" id="marketRefreshBar"></div></div>
+                <div class="market-container">
+                    <div class="market-panel">
+                        <div class="market-storage-panel">
+                            <div class="market-storage-title">Piac kínálata</div>
+                            <div class="market-storage-grid" id="marketStorageGrid"></div>
+                        </div>
+                        <div class="market-error" id="marketError"></div>
+                    </div>
+                    <div class="inventory-panel">
+                        <div class="inventory-title">Leltár</div>
+                        <div class="inventory-grid" id="marketInventoryGrid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="shopModalBg" class="shop-modal-bg" style="display:none;">
+        <div class="shop-modal">
+            <button class="shop-close-btn" id="shopCloseBtn" title="Bezárás">&times;</button>
+            <div class="shop-title">Bolt</div>
+            <div class="shop-items" id="shopItems"></div>
+            <div class="shop-error" id="shopError"></div>
+        </div>
+    </div>
+    <script>
+        // Karakterválasztás logika
+        let selectedGender = 'male';
+        document.getElementById('avatarMale').classList.add('selected');
+        document.getElementById('avatarMale').onclick = function() {
+            selectedGender = 'male';
+            this.classList.add('selected');
+            document.getElementById('avatarFemale').classList.remove('selected');
+        };
+        document.getElementById('avatarFemale').onclick = function() {
+            selectedGender = 'female';
+            this.classList.add('selected');
+            document.getElementById('avatarMale').classList.remove('selected');
+        };
+        document.getElementById('startGameBtn').onclick = function() {
+            const name = document.getElementById('charName').value.trim() || (selectedGender === 'male' ? 'Gladiátor' : 'Gladiátornő');
+            startGame(selectedGender, name);
+        };
+        // Játék változók
+        const EQUIP_SLOTS = [
+            { key: 'weapon', label: 'Fegyver', icon: '⚔️' },
+            { key: 'armor', label: 'Páncél', icon: '🦺' },
+            { key: 'helmet', label: 'Sisak', icon: '⛑️' },
+            { key: 'ring', label: 'Gyűrű', icon: '💍' },
+            { key: 'necklace', label: 'Nyaklánc', icon: '📿' }
+        ];
+        const items = [
+            { type: 'weapon', name: 'Fa kard', icon: '⚔️', desc: 'Egyszerű fa kard.\n+2 erő', str: 2, def: 0 },
+            { type: 'armor', name: 'Bőr páncél', icon: '🦺', desc: 'Bőrből készült páncél.\n+2 védelem', str: 0, def: 2 },
+            { type: 'helmet', name: 'Vas sisak', icon: '⛑️', desc: 'Vas sisak.\n+1 védelem', str: 0, def: 1 },
+            { type: 'ring', name: 'Erő gyűrűje', icon: '💍', desc: 'Gyűrű, ami növeli a sebzést.\n+1 erő', str: 1, def: 0 },
+            { type: 'necklace', name: 'Egyszerű nyaklánc', icon: '📿', desc: 'Egyszerű nyaklánc.\n+30 életerő', str: 0, def: 0, hp: 30 },
+            { type: 'food', name: 'Alma', icon: '🍎', desc: 'Finom alma.\nGyógyít: 20 HP', heal: 20 },
+            { type: 'food', name: 'Kenyér', icon: '🍞', desc: 'Friss kenyér.\nGyógyít: 30 HP', heal: 30 },
+            { type: 'food', name: 'Csirkecomb', icon: '🍗', desc: 'Sült csirkecomb.\nGyógyít: 40 HP', heal: 40 }
+        ];
+        let inventory = Array(32).fill(null);
+        for (let i = 0; i < items.length; i++) inventory[i] = items[i];
+        let equipment = { weapon: null, armor: null, helmet: null, ring: null, necklace: null };
+        let gold = 100;
+        // Drag & drop változók
+        let draggedFrom = null;
+        let draggedIdx = null;
+        let draggedEquipSlot = null;
+        function updateEquipment() {
+            const equipDiv = document.getElementById('equipmentPanel');
+            equipDiv.innerHTML = '';
+            EQUIP_SLOTS.forEach(slot => {
+                const item = equipment[slot.key];
+                const div = document.createElement('div');
+                div.className = 'equip-slot' + (item ? ' has-item' : '');
+                div.ondragover = (e) => allowDrop(e, 'equip', slot.key);
+                div.ondrop = (e) => dropItem(e, 'equip', slot.key);
+                div.ondragleave = (e) => leaveDrop(e, 'equip', slot.key);
+                div.draggable = !!item;
+                div.ondragstart = (e) => { if (item) { draggedFrom = 'equip'; draggedEquipSlot = slot.key; } };
+                div.title = slot.label;
+                if (item) {
+                    div.innerHTML = item.icon;
+                    const tip = document.createElement('div');
+                    tip.className = 'equip-tooltip';
+                    let dmg = item.str || 0;
+                    let def = item.def || 0;
+                    let hp = item.hp || 0;
+                    tip.innerHTML = `<b>${item.name}</b><br>\nSebzés: +${dmg}<br>Védelem: +${def}` + (hp ? `<br>Életerő: +${hp}` : '');
+                    div.appendChild(tip);
+                } else {
+                    div.innerHTML = `<span class='slot-icon'>${slot.icon}</span>`;
+                    const label = document.createElement('div');
+                    label.className = 'equip-label';
+                    label.textContent = slot.label;
+                    div.appendChild(label);
+                }
+                equipDiv.appendChild(div);
+            });
+        }
+        function updateInventory() {
+            const invDiv = document.getElementById('inventoryGrid');
+            invDiv.innerHTML = '';
+            for (let i = 0; i < 32; i++) {
+                const item = inventory[i];
+                const div = document.createElement('div');
+                div.className = 'inv-slot';
+                div.ondragover = (e) => allowDrop(e, 'inv', i);
+                div.ondrop = (e) => dropItem(e, 'inv', i);
+                div.ondragleave = (e) => leaveDrop(e, 'inv', i);
+                if (item) {
+                    div.draggable = true;
+                    div.ondragstart = (e) => { draggedFrom = 'inv'; draggedIdx = i; };
+                    div.innerHTML = item.icon;
+                    const tip = document.createElement('div');
+                    tip.className = 'inv-tooltip';
+                    if (["weapon","armor","helmet","ring","necklace"].includes(item.type)) {
+                        let dmg = item.str || 0;
+                        let def = item.def || 0;
+                        let hp = item.hp || 0;
+                        tip.innerHTML = `<b>${item.name}</b><br>\nSebzés: +${dmg}<br>Védelem: +${def}` + (hp ? `<br>Életerő: +${hp}` : '');
+                    } else {
+                        tip.textContent = `${item.name}\n${item.desc}`;
+                    }
+                    div.appendChild(tip);
+                    if (item.type === 'food') {
+                        div.ondragstart = (e) => { draggedFrom = 'inv'; draggedIdx = i; e.dataTransfer.setData('text/plain', 'food'); };
+                    }
+                }
+                invDiv.appendChild(div);
+            }
+        }
+        function allowDrop(ev, target, idx) {
+            ev.preventDefault();
+            ev.currentTarget.classList.add('dragover');
+        }
+        function leaveDrop(ev, target, idx) {
+            ev.currentTarget.classList.remove('dragover');
+        }
+        function dropItem(ev, target, idx) {
+            ev.preventDefault();
+            ev.currentTarget.classList.remove('dragover');
+            // Inventory -> Equipment
+            if (draggedFrom === 'inv' && target === 'equip') {
+                const item = inventory[draggedIdx];
+                if (!item) return;
+                if (item.type !== idx) return;
+                if (equipment[idx]) {
+                    // Ha már van ott felszerelés, visszarakjuk az inventory-ba
+                    const emptyIdx = inventory.findIndex(x => !x);
+                    if (emptyIdx === -1) return;
+                    inventory[emptyIdx] = equipment[idx];
+                }
+                equipment[idx] = item;
+                inventory[draggedIdx] = null;
+            }
+            // Equipment -> Inventory
+            else if (draggedFrom === 'equip' && target === 'inv') {
+                const item = equipment[draggedEquipSlot];
+                if (!item) return;
+                if (inventory[idx]) return;
+                inventory[idx] = item;
+                equipment[draggedEquipSlot] = null;
+            }
+            // Inventory <-> Inventory
+            else if (draggedFrom === 'inv' && target === 'inv' && draggedIdx !== idx) {
+                if (inventory[idx]) return;
+                inventory[idx] = inventory[draggedIdx];
+                inventory[draggedIdx] = null;
+            }
+            // Equipment <-> Equipment (swap)
+            else if (draggedFrom === 'equip' && target === 'equip' && draggedEquipSlot !== idx) {
+                if (equipment[idx]) {
+                    const temp = equipment[idx];
+                    equipment[idx] = equipment[draggedEquipSlot];
+                    equipment[draggedEquipSlot] = temp;
+                } else {
+                    equipment[idx] = equipment[draggedEquipSlot];
+                    equipment[draggedEquipSlot] = null;
+                }
+            }
+            draggedFrom = null;
+            draggedIdx = null;
+            draggedEquipSlot = null;
+            updateEquipment();
+            updateInventory();
+            updateStatsPanel();
+        }
+        updateEquipment();
+        updateInventory();
+
+        // === HIÁNYZÓ JÁTÉKLOGIKA PÓTLÁSA ===
+        // Statok, harc, ellenség, szintlépés, élelemhasználat, UI váltás
+        let player = null;
+        let enemy = null;
+        function getBaseStats(gender) {
+            return {
+                maxHp: 30,
+                hp: 30,
+                str: gender === 'male' ? 5 : 4,
+                def: gender === 'male' ? 3 : 4,
+                level: 1,
+                xp: 0,
+                xpToNext: 20
+            };
+        }
+        function getEquipBonus() {
+            let str = 0, def = 0, hp = 0;
+            for (const slot of EQUIP_SLOTS) {
+                const item = equipment[slot.key];
+                if (item) {
+                    str += item.str || 0;
+                    def += item.def || 0;
+                    hp += item.hp || 0;
+                }
+            }
+            return { str, def, hp };
+        }
+        function updateStatsPanel() {
+            if (!player) return;
+            document.getElementById('goldBar').textContent = `💰 Arany: ${gold}`;
+            document.getElementById('charAvatarBigEmoji').textContent = player.gender === 'male' ? '🧔' : '👩‍🦰';
+            const stats = player;
+            const bonus = getEquipBonus();
+            // HP arányosítás felszerelésváltáskor
+            let prevMaxHp = stats._lastMaxHp !== undefined ? stats._lastMaxHp : stats.maxHp;
+            let newMaxHp = stats.maxHp + bonus.hp;
+            if (prevMaxHp !== newMaxHp) {
+                let ratio = stats.hp / prevMaxHp;
+                stats.hp = Math.round(ratio * newMaxHp);
+                if (stats.hp > newMaxHp) stats.hp = newMaxHp;
+                stats._lastMaxHp = newMaxHp;
+            }
+            const statsList = document.getElementById('statsList');
+            statsList.innerHTML = '';
+            statsList.innerHTML += `<li><b>Név:</b> ${player.name}</li>`;
+            statsList.innerHTML += `<li><b>Nem:</b> ${player.gender === 'male' ? 'Férfi' : 'Nő'}</li>`;
+            statsList.innerHTML += `<li><b>Szint:</b> ${stats.level}</li>`;
+            statsList.innerHTML += `<li><b>Életerő:</b> ${stats.hp} / ${newMaxHp}</li>`;
+            statsList.innerHTML += `<li><b>Erő:</b> ${stats.str + bonus.str} <span style='color:#b8c1ec'>(+${bonus.str})</span></li>`;
+            statsList.innerHTML += `<li><b>Védelem:</b> ${stats.def + bonus.def} <span style='color:#b8c1ec'>(+${bonus.def})</span></li>`;
+            statsList.innerHTML += `<li><b>Tapasztalat:</b> ${stats.xp} / ${stats.xpToNext}</li>`;
+        }
+        // Harc logika
+        function randomEnemy(level) {
+            const enemies = [
+                { name: 'Patkány', icon: '🐀', hp: 12 + level*2, str: 2 + level, def: 1 + Math.floor(level/2), xp: 8 + level*2, gold: 5 + Math.floor(Math.random()*4) },
+                { name: 'Rabló', icon: '🦹‍♂️', hp: 18 + level*3, str: 3 + level, def: 2 + Math.floor(level/2), xp: 12 + level*3, gold: 10 + Math.floor(Math.random()*8) },
+                { name: 'Farkas', icon: '🐺', hp: 20 + level*4, str: 4 + level, def: 2 + Math.floor(level/2), xp: 16 + level*4, gold: 15 + Math.floor(Math.random()*10) }
+            ];
+            return Object.assign({}, enemies[Math.floor(Math.random()*enemies.length)]);
+        }
+        function updateEnemyPanel() {
+            if (!enemy) return;
+            document.getElementById('enemyImg').textContent = enemy.icon;
+            document.getElementById('enemyName').textContent = enemy.name;
+            document.getElementById('enemyStats').textContent = `Életerő: ${enemy.hp} / ${enemy.maxHp} | Erő: ${enemy.str} | Védelem: ${enemy.def}`;
+            const perc = Math.max(0, 100 * enemy.hp / enemy.maxHp);
+            document.getElementById('enemyHpBar').style.width = perc + '%';
+        }
+        let combatLogLines = [];
+        function logCombat(msg) {
+            // Sebzés: név fehér, "sebzést adott le" sárga, érték piros
+            msg = msg.replace(/([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű0-9 ]+) sebzést adott le ([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű0-9 ]+)nek: (\d+)/g, '<span class="name">$1</span> <span class="action">sebzést adott le</span> <span class="name">$2</span>nek: <span class="dmg">$3</span>');
+            msg = msg.replace(/([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű0-9 ]+) támad, de ([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű0-9 ]+) kivédi a támadást!/g, '<span class="name">$1</span> <span class="action">támad, de</span> <span class="name">$2</span> <span class="action">kivédi a támadást!</span>');
+            // Gyógyulás: zöld
+            msg = msg.replace(/\+(\d+) HP/g, '<span class="heal">+$1 HP</span>');
+            // Loot: "[KarakterNév] kapott [tárgy] (🍞)!" vagy "[KarakterNév] kapott [arany] arany!"
+            msg = msg.replace(/([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű0-9 ]+) kapott ([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű ]+) \((.)\)!/g, '<span class="loot"><span class="name">$1</span> kapott <span class="loot-val">$2 $3</span>!</span>');
+            msg = msg.replace(/([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű0-9 ]+) kapott (\d+) arany!/g, '<span class="gold"><span class="name">$1</span> kapott <span class="gold-val">$2 arany</span>!</span>');
+            combatLogLines.unshift(msg);
+            if (combatLogLines.length > 10) combatLogLines = combatLogLines.slice(0, 10);
+            document.getElementById('combatLog').innerHTML = combatLogLines.map(line => `<div>${line}</div>`).join('');
+        }
+        let attackCooldown = false;
+        let cooldownInterval = null;
+        function attackEnemy() {
+            if (attackCooldown) return;
+            attackCooldown = true;
+            document.getElementById('attackBtn').disabled = true;
+            let cooldown = 2500;
+            let left = cooldown;
+            document.getElementById('attackBtn').textContent = `Várj... ${(left/1000).toFixed(1)}s`;
+            document.getElementById('combatCooldownBar').style.width = '100%';
+            cooldownInterval = setInterval(() => {
+                left -= 100;
+                if (left <= 0) {
+                    clearInterval(cooldownInterval);
+                    document.getElementById('attackBtn').disabled = false;
+                    document.getElementById('attackBtn').textContent = 'Támadás';
+                    document.getElementById('combatCooldownBar').style.width = '0%';
+                    attackCooldown = false;
+                } else {
+                    document.getElementById('attackBtn').textContent = `Várj... ${(left/1000).toFixed(1)}s`;
+                    document.getElementById('combatCooldownBar').style.width = (100*left/cooldown) + '%';
+                }
+            }, 100);
+            if (!player || player.hp <= 0 || !enemy || enemy.hp <= 0) return;
+            // Játékos támad
+            const bonus = getEquipBonus();
+            let playerDmg = Math.max(0, (player.str + bonus.str) - enemy.def + Math.floor(Math.random()*3));
+            if (playerDmg === 0) logCombat(`${player.name} támad, de ${enemy.name} kivédi a támadást!`);
+            else logCombat(`${player.name} sebzést adott le ${enemy.name}nek: ${playerDmg}`);
+            enemy.hp -= playerDmg;
+            if (enemy.hp <= 0) {
+                enemy.hp = 0;
+                updateEnemyPanel();
+                gold += enemy.gold || 0;
+                let lootMsg = `Győztél! +XP.`;
+                lootMsg += `\n${player.name} kapott ${enemy.gold || 0} arany!`;
+                // Tárgydobás logika
+                let loot = null;
+                let roll = Math.random();
+                if (roll < 0.4) { // 40% élelem
+                    const foods = [
+                        { type: 'food', name: 'Alma', icon: '🍎', desc: 'Finom alma.\nGyógyít: 20 HP', heal: 20 },
+                        { type: 'food', name: 'Kenyér', icon: '🍞', desc: 'Friss kenyér.\nGyógyít: 30 HP', heal: 30 },
+                        { type: 'food', name: 'Csirkecomb', icon: '🍗', desc: 'Sült csirkecomb.\nGyógyít: 40 HP', heal: 40 }
+                    ];
+                    loot = foods[Math.floor(Math.random()*foods.length)];
+                } else if (roll < 0.55) { // 15% felszerelés
+                    const equips = [
+                        { type: 'weapon', name: 'Fa kard', icon: '⚔️', desc: 'Egyszerű fa kard.\n+2 erő', str: 2, def: 0 },
+                        { type: 'armor', name: 'Bőr páncél', icon: '🦺', desc: 'Bőrből készült páncél.\n+2 védelem', str: 0, def: 2 },
+                        { type: 'helmet', name: 'Vas sisak', icon: '⛑️', desc: 'Vas sisak.\n+1 védelem', str: 0, def: 1 },
+                        { type: 'ring', name: 'Erő gyűrűje', icon: '💍', desc: 'Gyűrű, ami növeli a sebzést.\n+1 erő', str: 1, def: 0 },
+                        { type: 'necklace', name: 'Egyszerű nyaklánc', icon: '📿', desc: 'Egyszerű nyaklánc.\n+30 életerő', str: 0, def: 0, hp: 30 }
+                    ];
+                    loot = equips[Math.floor(Math.random()*equips.length)];
+                }
+                if (loot) {
+                    const emptyIdx = inventory.findIndex(x => !x);
+                    if (emptyIdx !== -1) {
+                        inventory[emptyIdx] = JSON.parse(JSON.stringify(loot));
+                        lootMsg += `\n${player.name} kapott ${loot.name} (${loot.icon})!`;
+                        updateInventory();
+                    } else {
+                        lootMsg += `\nNincs hely a leltárban, a zsákmány elveszett!`;
+                    }
+                }
+                logCombat(lootMsg);
+                player.xp += enemy.xp;
+                if (player.xp >= player.xpToNext) {
+                    player.level++;
+                    player.xp -= player.xpToNext;
+                    player.xpToNext = 20 + player.level*10;
+                    player.maxHp += 5;
+                    player.hp = player.maxHp;
+                    player.str++;
+                    player.def++;
+                    logCombat('Szintet léptél! Statok növekedtek.');
+                }
+                updateStatsPanel();
+                setTimeout(() => {
+                    enemy = randomEnemy(player.level);
+                    enemy.maxHp = enemy.hp;
+                    updateEnemyPanel();
+                    logCombat('Új ellenség!');
+                }, 1200);
+                return;
+            }
+            updateEnemyPanel();
+            // Ellenség támad
+            setTimeout(() => {
+                let enemyDmg = Math.max(0, enemy.str - (player.def + bonus.def) + Math.floor(Math.random()*2));
+                if (enemyDmg === 0) logCombat(`${enemy.name} támad, de ${player.name} kivédi a támadást!`);
+                else logCombat(`${enemy.name} sebzést adott le ${player.name}nek: ${enemyDmg}`);
+                player.hp -= enemyDmg;
+                if (player.hp <= 0) {
+                    player.hp = 0;
+                    updateStatsPanel();
+                    logCombat('Legyőztek! Kattints élelemre a gyógyuláshoz!');
+                    return;
+                }
+                updateStatsPanel();
+            }, 700);
+        }
+        document.getElementById('attackBtn').onclick = attackEnemy;
+        // Játék indítása
+        function startGame(gender, name) {
+            player = Object.assign({ gender, name }, getBaseStats(gender));
+            enemy = randomEnemy(1);
+            enemy.maxHp = enemy.hp;
+            document.getElementById('charSelect').style.display = 'none';
+            document.getElementById('gameUI').style.display = '';
+            updateEquipment();
+            updateInventory();
+            updateStatsPanel();
+            updateEnemyPanel();
+            logCombat('Kattints a Támadás gombra!');
+        }
+        // Karakter avatar droppolható élelemre
+        document.getElementById('charAvatarBig').ondragover = function(e) {
+            e.preventDefault();
+            this.classList.add('dragover');
+        };
+        document.getElementById('charAvatarBig').ondragleave = function(e) {
+            this.classList.remove('dragover');
+        };
+        document.getElementById('charAvatarBig').ondrop = function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+            if (draggedFrom === 'inv' && typeof draggedIdx === 'number') {
+                const item = inventory[draggedIdx];
+                if (item && item.type === 'food' && player && player.hp < player.maxHp) {
+                    const heal = item.heal || 5;
+                    player.hp = Math.min(player.maxHp, player.hp + heal);
+                    inventory[draggedIdx] = null;
+                    updateStatsPanel();
+                    updateInventory();
+                    // Felrepülő zöld +HP animáció
+                    const healFloat = document.getElementById('healFloat');
+                    healFloat.textContent = `+${heal}`;
+                    healFloat.classList.add('show');
+                    setTimeout(() => healFloat.classList.remove('show'), 900);
+                }
+            }
+            draggedFrom = null;
+            draggedIdx = null;
+        };
+        // Bolt tárgyak
+        const shopGoods = [
+            { type: 'food', name: 'Alma', icon: '🍎', price: 8, desc: 'Finom alma.\nGyógyít: 20 HP', heal: 20 },
+            { type: 'food', name: 'Kenyér', icon: '🍞', price: 15, desc: 'Friss kenyér.\nGyógyít: 30 HP', heal: 30 },
+            { type: 'food', name: 'Csirkecomb', icon: '🍗', price: 25, desc: 'Sült csirkecomb.\nGyógyít: 40 HP', heal: 40 },
+            { type: 'food', name: 'Banán', icon: '🍌', price: 35, desc: 'Érett banán.\nGyógyít: 25 HP', heal: 25 },
+            { type: 'food', name: 'Hal', icon: '🐟', price: 55, desc: 'Friss hal.\nGyógyít: 38 HP', heal: 38 },
+            { type: 'food', name: 'Hús', icon: '🥩', price: 80, desc: 'Szaftos hús.\nGyógyít: 55 HP', heal: 55 }
+        ];
+        // Bolt gomb logika
+        document.getElementById('shopBtn').onclick = function() {
+            document.getElementById('shopModalBg').style.display = '';
+            renderShopItems();
+            document.getElementById('shopError').textContent = '';
+        };
+        document.getElementById('shopCloseBtn').onclick = function() {
+            document.getElementById('shopModalBg').style.display = 'none';
+        };
+        function renderShopItems() {
+            const shopDiv = document.getElementById('shopItems');
+            shopDiv.innerHTML = '';
+            shopGoods.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 'shop-item';
+                div.innerHTML = `<div class='shop-item-icon'>${item.icon}</div><div class='shop-item-name'>${item.name}</div><div class='shop-item-price'>${item.price} <span style='color:#ffd700'>💰</span></div>`;
+                const btn = document.createElement('button');
+                btn.className = 'shop-item-btn';
+                btn.textContent = 'Vásárlás';
+                btn.onclick = function() { buyShopItem(idx); };
+                div.appendChild(btn);
+                // Tooltip
+                const tip = document.createElement('div');
+                tip.className = 'shop-item-tooltip';
+                if (["weapon","armor","helmet","ring","necklace"].includes(item.type)) {
+                    let dmg = item.str || 0;
+                    let def = item.def || 0;
+                    let hp = item.hp || 0;
+                    tip.innerHTML = `<b>${item.name}</b><br>\nSebzés: +${dmg}<br>Védelem: +${def}` + (hp ? `<br>Életerő: +${hp}` : '') + `<br>Ár: ${item.price} 💰`;
+                } else {
+                    tip.innerHTML = `${item.name}<br>${item.desc}<br>Ár: ${item.price} 💰`;
+                }
+                div.appendChild(tip);
+                shopDiv.appendChild(div);
+            });
+        }
+        function buyShopItem(idx) {
+            const item = shopGoods[idx];
+            if (gold < item.price) {
+                document.getElementById('shopError').textContent = 'Nincs elég aranyad!';
+                return;
+            }
+            const emptyIdx = inventory.findIndex(x => !x);
+            if (emptyIdx === -1) {
+                document.getElementById('shopError').textContent = 'Nincs hely a leltárban!';
+                return;
+            }
+            gold -= item.price;
+            // Mély másolat, hogy ne linkeljen
+            inventory[emptyIdx] = JSON.parse(JSON.stringify(item));
+            updateInventory();
+            updateStatsPanel();
+            document.getElementById('shopError').textContent = 'Sikeres vásárlás!';
+        }
+        // Piac logika
+        const MARKET_CATS = [
+            { key: 'food', label: 'Élelmiszer' },
+            { key: 'weapon', label: 'Fegyver' },
+            { key: 'jewelry', label: 'Ékszerész' },
+            { key: 'armor', label: 'Páncélzat' }
+        ];
+        const MARKET_ITEMS = {
+            food: [
+                { type: 'food', name: 'Alma', icon: '🍎', price: 30, sell: 20, desc: 'Finom alma.\nGyógyít: 20 HP', heal: 20 },
+                { type: 'food', name: 'Kenyér', icon: '🍞', price: 40, sell: 27, desc: 'Friss kenyér.\nGyógyít: 30 HP', heal: 30 },
+                { type: 'food', name: 'Csirkecomb', icon: '🍗', price: 60, sell: 40, desc: 'Sült csirkecomb.\nGyógyít: 40 HP', heal: 40 },
+                { type: 'food', name: 'Banán', icon: '🍌', price: 35, sell: 23, desc: 'Érett banán.\nGyógyít: 25 HP', heal: 25 },
+                { type: 'food', name: 'Hal', icon: '🐟', price: 55, sell: 36, desc: 'Friss hal.\nGyógyít: 38 HP', heal: 38 },
+                { type: 'food', name: 'Hús', icon: '🥩', price: 80, sell: 53, desc: 'Szaftos hús.\nGyógyít: 55 HP', heal: 55 }
+            ],
+            weapon: [
+                { type: 'weapon', name: 'Fa kard', icon: '⚔️', price: 200, sell: 133, desc: 'Egyszerű fa kard.\n+2 erő', str: 2, def: 0 }
+            ],
+            jewelry: [
+                { type: 'ring', name: 'Erő gyűrűje', icon: '💍', price: 80, sell: 53, desc: 'Gyűrű, ami növeli a sebzést.\n+1 erő', str: 1, def: 0 },
+                { type: 'necklace', name: 'Egyszerű nyaklánc', icon: '📿', price: 100, sell: 67, desc: 'Egyszerű nyaklánc.\n+30 életerő', str: 0, def: 0, hp: 30 }
+            ],
+            armor: [
+                { type: 'armor', name: 'Bőr páncél', icon: '🦺', price: 90, sell: 60, desc: 'Bőrből készült páncél.\n+2 védelem', str: 0, def: 2 },
+                { type: 'helmet', name: 'Vas sisak', icon: '⛑️', price: 70, sell: 47, desc: 'Vas sisak.\n+1 védelem', str: 0, def: 1 }
+            ]
+        };
+        let marketCurrentCat = 'food';
+        let marketGoods = {};
+        let marketStorage = Array(64).fill(null);
+        let marketRefreshLeft = 300; // 5 perc
+        let marketRefreshTimerInt = null;
+        function showMarket() {
+            document.getElementById('gameUI').style.display = 'none';
+            document.getElementById('marketUI').style.display = '';
+            renderMarketCats();
+            renderMarketGoods();
+            renderMarketInventory();
+            startMarketRefreshTimer();
+        }
+        function showGame() {
+            document.getElementById('marketUI').style.display = 'none';
+            document.getElementById('gameUI').style.display = '';
+            stopMarketRefreshTimer();
+        }
+        document.getElementById('menuGameBtn').onclick = function() {
+            this.classList.add('active');
+            document.getElementById('menuMarketBtn').classList.remove('active');
+            showGame();
+        };
+        document.getElementById('menuMarketBtn').onclick = function() {
+            this.classList.add('active');
+            document.getElementById('menuGameBtn').classList.remove('active');
+            showMarket();
+        };
+        function renderMarketCats() {
+            const catsDiv = document.getElementById('marketCats');
+            catsDiv.innerHTML = '';
+            MARKET_CATS.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = 'market-cat-btn' + (marketCurrentCat === cat.key ? ' active' : '');
+                btn.textContent = cat.label;
+                btn.onclick = function() {
+                    marketCurrentCat = cat.key;
+                    renderMarketGoods();
+                };
+                catsDiv.appendChild(btn);
+            });
+        }
+        function randomMarketGoods(cat) {
+            // 8-20 random item a kategóriából, 64 slotos gridbe
+            const pool = MARKET_ITEMS[cat];
+            let n = Math.min(pool.length, 8 + Math.floor(Math.random()*13));
+            let arr = [...pool];
+            let res = Array(64).fill(null);
+            for (let i = 0; i < res.length && arr.length > 0; i++) {
+                if (Math.random() < 0.5 && arr.length > 0) {
+                    let idx = Math.floor(Math.random()*arr.length);
+                    res[i] = arr[idx];
+                    arr.splice(idx, 1);
+                }
+            }
+            // Ha üres, legalább 8 random item legyen benne
+            let filled = res.filter(x=>x).length;
+            while (filled < 8) {
+                let idx = res.findIndex(x=>!x);
+                if (idx === -1) break;
+                let item = pool[Math.floor(Math.random()*pool.length)];
+                res[idx] = item;
+                filled++;
+            }
+            return res;
+        }
+        function renderMarketGoods() {
+            // Ha nincs még generálva, generáljuk
+            if (!marketGoods[marketCurrentCat]) {
+                marketGoods[marketCurrentCat] = randomMarketGoods(marketCurrentCat);
+            }
+            // Piac storage feltöltése
+            marketStorage = marketGoods[marketCurrentCat].map(x => x ? JSON.parse(JSON.stringify(x)) : null);
+            renderMarketStorage();
+            document.getElementById('marketError').textContent = '';
+        }
+        function renderMarketStorage() {
+            const grid = document.getElementById('marketStorageGrid');
+            grid.innerHTML = '';
+            for (let i = 0; i < 64; i++) {
+                const item = marketStorage[i];
+                const div = document.createElement('div');
+                div.className = 'market-slot';
+                div.ondragover = (e) => { e.preventDefault(); div.classList.add('dragover'); };
+                div.ondragleave = (e) => { div.classList.remove('dragover'); };
+                div.ondrop = (e) => {
+                    e.preventDefault();
+                    div.classList.remove('dragover');
+                    const dt = e.dataTransfer.getData('text/plain');
+                    // Leltárból piacra: eladás
+                    if (dt && dt.startsWith('inv-')) {
+                        const invIdx = parseInt(dt.split('-')[1]);
+                        const invItem = inventory[invIdx];
+                        if (!invItem || marketStorage[i]) return;
+                        let sell = invItem.sell || Math.floor((invItem.price||0)*2/3);
+                        gold += sell;
+                        marketStorage[i] = JSON.parse(JSON.stringify(invItem));
+                        inventory[invIdx] = null;
+                        updateInventory();
+                        updateStatsPanel();
+                        renderMarketInventory();
+                        renderMarketStorage();
+                        showMarketFloat('+'+sell, true, div);
+                    }
+                    // Piac storage-on belül mozgatás
+                    else if (dt && dt.startsWith('market-')) {
+                        const fromIdx = parseInt(dt.split('-')[1]);
+                        if (fromIdx === i || !marketStorage[fromIdx] || marketStorage[i]) return;
+                        marketStorage[i] = marketStorage[fromIdx];
+                        marketStorage[fromIdx] = null;
+                        renderMarketStorage();
+                    }
+                };
+                if (item) {
+                    div.draggable = true;
+                    div.ondragstart = (e) => { e.dataTransfer.setData('text/plain', 'market-'+i); };
+                    div.innerHTML = item.icon;
+                    const tip = document.createElement('div');
+                    tip.className = 'inv-tooltip';
+                    let heal = item.heal || item.hp || 0;
+                    let price = item.price || 0;
+                    let sell = item.sell || Math.floor(price*2/3);
+                    let lines = `<b>${item.name}</b>`;
+                    lines += `<br>Ár: ${price} 💰`;
+                    lines += `<br>Eladási ár: ${sell} 💰`;
+                    if (heal) lines += `<br>Életerő: +${heal}`;
+                    if (["weapon","armor","helmet","ring","necklace"].includes(item.type)) {
+                        let dmg = item.str || 0;
+                        let def = item.def || 0;
+                        if (dmg) lines += `<br>Sebzés: +${dmg}`;
+                        if (def) lines += `<br>Védelem: +${def}`;
+                    }
+                    tip.innerHTML = lines;
+                    div.appendChild(tip);
+                }
+                grid.appendChild(div);
+            }
+            document.getElementById('marketGoldBar').textContent = `💰 Arany: ${gold}`;
+        }
+        function renderMarketInventory() {
+            const invDiv = document.getElementById('marketInventoryGrid');
+            invDiv.innerHTML = '';
+            for (let i = 0; i < 32; i++) {
+                const item = inventory[i];
+                const div = document.createElement('div');
+                div.className = 'inv-slot';
+                div.ondragover = (e) => { e.preventDefault(); div.classList.add('dragover'); };
+                div.ondragleave = (e) => { div.classList.remove('dragover'); };
+                div.ondrop = (e) => {
+                    e.preventDefault();
+                    div.classList.remove('dragover');
+                    const dt = e.dataTransfer.getData('text/plain');
+                    // Piacról vásárlás
+                    if (dt && dt.startsWith('market-')) {
+                        const marketIdx = parseInt(dt.split('-')[1]);
+                        const marketItem = marketStorage[marketIdx];
+                        if (!marketItem || item) return;
+                        if (gold < marketItem.price) {
+                            document.getElementById('marketError').textContent = 'Nincs elég aranyad!';
+                            return;
+                        }
+                        gold -= marketItem.price;
+                        inventory[i] = JSON.parse(JSON.stringify(marketItem));
+                        marketStorage[marketIdx] = null;
+                        updateInventory();
+                        updateStatsPanel();
+                        renderMarketInventory();
+                        renderMarketStorage();
+                        showMarketFloat('-'+marketItem.price, false, div);
+                    }
+                    // Leltáron belül mozgatás
+                    else if (dt && dt.startsWith('inv-')) {
+                        const fromIdx = parseInt(dt.split('-')[1]);
+                        if (fromIdx === i || !inventory[fromIdx] || item) return;
+                        inventory[i] = inventory[fromIdx];
+                        inventory[fromIdx] = null;
+                        updateInventory();
+                        renderMarketInventory();
+                    }
+                };
+                if (item) {
+                    div.draggable = true;
+                    div.ondragstart = (e) => { e.dataTransfer.setData('text/plain', 'inv-'+i); };
+                    div.innerHTML = item.icon;
+                    const tip = document.createElement('div');
+                    tip.className = 'inv-tooltip';
+                    let heal = item.heal || item.hp || 0;
+                    let price = item.price || 0;
+                    let sell = item.sell || Math.floor(price*2/3);
+                    let lines = `<b>${item.name}</b>`;
+                    lines += `<br>Ár: ${price} 💰`;
+                    lines += `<br>Eladási ár: ${sell} 💰`;
+                    if (heal) lines += `<br>Életerő: +${heal}`;
+                    if (["weapon","armor","helmet","ring","necklace"].includes(item.type)) {
+                        let dmg = item.str || 0;
+                        let def = item.def || 0;
+                        if (dmg) lines += `<br>Sebzés: +${dmg}`;
+                        if (def) lines += `<br>Védelem: +${def}`;
+                    }
+                    tip.innerHTML = lines;
+                    div.appendChild(tip);
+                }
+                invDiv.appendChild(div);
+            }
+            document.getElementById('marketGoldBar').textContent = `💰 Arany: ${gold}`;
+        }
+        // Felrepülő arany animáció
+        function showMarketFloat(text, plus, parentDiv) {
+            let float = parentDiv.querySelector('.market-float');
+            if (float) float.remove();
+            float = document.createElement('span');
+            float.className = 'market-float ' + (plus ? 'plus' : 'minus');
+            float.textContent = text + '💰';
+            parentDiv.appendChild(float);
+            setTimeout(() => { float.style.opacity = '1'; float.style.top = '10px'; }, 10);
+            setTimeout(() => { float.style.opacity = '0'; float.style.top = '-30px'; float.remove(); }, 1100);
+        }
+        // Piac frissítés logika
+        function refreshMarketGoods(force) {
+            marketGoods = {};
+            renderMarketGoods();
+            if (force) document.getElementById('marketError').textContent = 'A kínálat frissült!';
+        }
+        document.getElementById('marketRefreshBtn').onclick = function() {
+            if (gold < 50) {
+                document.getElementById('marketError').textContent = 'Nincs elég arany a frissítéshez!';
+                return;
+            }
+            gold -= 50;
+            updateStatsPanel();
+            refreshMarketGoods(true);
+            renderMarketInventory();
+            marketRefreshLeft = 300;
+        };
+        function startMarketRefreshTimer() {
+            if (marketRefreshTimerInt) clearInterval(marketRefreshTimerInt);
+            updateMarketRefreshBar();
+            marketRefreshTimerInt = setInterval(() => {
+                marketRefreshLeft--;
+                if (marketRefreshLeft <= 0) {
+                    marketRefreshLeft = 300;
+                    refreshMarketGoods(true);
+                }
+                updateMarketRefreshBar();
+            }, 1000);
+        }
+        function stopMarketRefreshTimer() {
+            if (marketRefreshTimerInt) clearInterval(marketRefreshTimerInt);
+        }
+        function updateMarketRefreshBar() {
+            const min = 0, max = 300;
+            const perc = 100 * marketRefreshLeft / max;
+            document.getElementById('marketRefreshBar').style.width = perc + '%';
+            const m = Math.floor(marketRefreshLeft/60);
+            const s = (marketRefreshLeft%60).toString().padStart(2,'0');
+            document.getElementById('marketRefreshTimer').textContent = `Új áru érkezik: ${m}:${s}`;
+        }
+        // Piac UI induláskor rejtve
+        document.getElementById('marketUI').style.display = 'none';
+    </script>
+</body>
+</html>
